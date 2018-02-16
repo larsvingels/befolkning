@@ -1,0 +1,139 @@
+---
+title: "Befolkning"
+author: "Lars"
+date: "25 1 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning=FALSE, message = FALSE)
+```
+
+```{r}
+library(plyr) #data manipulation
+library(tidyverse)# data manipulation
+library(formattable)# table
+library(splitstackshape) # split columns
+library(jsonlite) #JSON format 
+library(wordcloud) #wordcloud
+library(RColorBrewer) # Color Theme
+library(ggthemes) #Themes for plot
+library(tm) # Sentiment Analysis 
+library(RSentiment) # Sentiment Analysis
+library(zoo) # Time
+library(stringr) #String Manipulation
+library(lubridate)
+
+# Load and clean variables
+bef <- read_delim("bef_kom.txt", delim=";", locale = locale(encoding = "Latin1"))
+
+bef <- bef %>% transmute(region = `region`, 
+                      year = `år`,
+                      variabel = `statistikkvariabel`,
+                      population = `Folkemengde 1. januar, etter region, år og statistikkvariabel`) %>%
+  mutate(fylke_id = str_sub(region, 1,2),
+         fylke_id = factor(as.numeric(fylke_id)),
+         fylke_id = fct_recode(fylke_id, 
+                               "50" = "16",
+                               "50" = "17"),
+         kommune_id = str_sub(region, 1,4),
+         kommune = gsub("[[:digit:]]", "", region)) %>%
+  select(5,6,7,2,4)
+  
+# Load fylkesnavn
+
+fylker <- read_csv2("fylker_navn.csv", locale = locale(encoding = "latin1"))
+
+fylker_navn <- fylker %>%
+  select(1,2) %>%
+  transmute(fylke_id = factor(Nummer),
+         fylke_navn = Navn)
+
+# Join to add fylkesnavn
+bef <- bef %>% 
+  left_join(fylker_navn, by="fylke_id") %>%
+  select(6, 1:5)
+
+rm(fylker_navn)
+```
+
+## Befolkningsutvikling i norske fylker
+
+```{r}
+# Make categories of kommmune populations
+bef_kat <- bef %>% 
+  mutate(size_1990 = cut(population, breaks = c(0, 2500, 5000, 10000, 20000, 50000, 1000000), labels = c("2,5k", "5k", "10k", "20k", "50k", "50k+"))) %>%
+  filter(year == 1990) %>%
+  na.omit() %>%
+  select(3,7)
+
+# Join with kommunestørrelseskategori
+bef <-  bef %>%
+  left_join(bef_kat, by="kommune_id") 
+
+rm(bef_kat)
+```
+
+```{r}
+# Make plots to show population change over time in fylker and types of kommuner
+
+# 1/5 fylker fra sør
+bef %>%
+  group_by(fylke_navn, fylke_id, size_1990, year) %>%
+  summarise(n(), population = sum(population)) %>%
+  mutate(perc = population/(population[year==min(year)])*100) %>%
+  filter(as.numeric(fylke_id) < 5) %>%
+  
+  ggplot(aes(year, perc, color=size_1990)) +
+  geom_smooth() + 
+  facet_wrap(~fylke_navn)
+
+# 2/5 fylker fra sør
+bef %>%
+  group_by(fylke_navn, fylke_id, size_1990, year) %>%
+  summarise(n(), population = sum(population)) %>%
+  mutate(perc = population/(population[year==min(year)])*100) %>%
+  filter(as.numeric(fylke_id) > 4,
+         as.numeric(fylke_id) < 9) %>%
+
+  ggplot(aes(year, perc, color=size_1990)) +
+  geom_smooth() + 
+  facet_wrap(~fylke_navn)
+
+# 3/5 fylker fra sør
+bef %>%
+  group_by(fylke_navn, fylke_id, size_1990, year) %>%
+  summarise(n(), population = sum(population)) %>%
+  mutate(perc = population/(population[year==min(year)])*100) %>%
+  filter(as.numeric(fylke_id) > 8,
+         as.numeric(fylke_id) < 13) %>%
+
+  ggplot(aes(year, perc, color=size_1990)) +
+  geom_smooth() + 
+  facet_wrap(~fylke_navn)
+
+# 4/5 fylker fra sør
+bef %>%
+  group_by(fylke_navn, fylke_id, size_1990, year) %>%
+  summarise(n(), population = sum(population)) %>%
+  mutate(perc = population/(population[year==min(year)])*100) %>%
+  filter(as.numeric(fylke_id) > 12,
+         as.numeric(fylke_id) < 17) %>%
+
+  ggplot(aes(year, perc, color=size_1990)) +
+  geom_smooth() + 
+  facet_wrap(~fylke_navn)
+
+# 5/5 fylker fra sør
+bef %>%
+  group_by(fylke_navn, fylke_id, size_1990, year) %>%
+  summarise(n(), population = sum(population)) %>%
+  mutate(perc = population/(population[year==min(year)])*100) %>%
+  filter(as.numeric(fylke_id) > 16) %>%
+
+  ggplot(aes(year, perc, color=size_1990)) +
+  geom_smooth() + 
+  facet_wrap(~fylke_navn)
+```
+
+
