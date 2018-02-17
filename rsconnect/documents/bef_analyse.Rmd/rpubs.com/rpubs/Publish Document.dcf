@@ -1,0 +1,10 @@
+name: Publish Document
+title:
+username:
+account: rpubs
+server: rpubs.com
+hostUrl: rpubs.com
+appId: https://api.rpubs.com/api/v1/document/360843/bb05886e9d94461f85daaad9703e6382
+bundleId: https://api.rpubs.com/api/v1/document/360843/bb05886e9d94461f85daaad9703e6382
+url: http://rpubs.com/larsvingels/360843
+when: 1518796112.48317
