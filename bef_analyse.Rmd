@@ -1,12 +1,12 @@
 ---
-title: "Befolkning"
+title: "Population trends in Norwegian counties"
 author: "Lars"
-date: "25 1 2018"
+date: "10 2 2018"
 output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE, warning=FALSE, message = FALSE)
+knitr::opts_chunk$set(echo = FALSE, warning=FALSE, message = FALSE)
 ```
 
 ```{r}
@@ -23,9 +23,11 @@ library(RSentiment) # Sentiment Analysis
 library(zoo) # Time
 library(stringr) #String Manipulation
 library(lubridate)
+```
 
+```{r, data construct}
 # Load and clean variables
-bef <- read_delim("bef_kom.txt", delim=";", locale = locale(encoding = "Latin1"))
+bef <- read_delim("data/bef_kom.txt", delim=";", locale = locale(encoding = "Latin1"))
 
 bef <- bef %>% transmute(region = `region`, 
                       year = `år`,
@@ -42,7 +44,7 @@ bef <- bef %>% transmute(region = `region`,
   
 # Load fylkesnavn
 
-fylker <- read_csv2("fylker_navn.csv", locale = locale(encoding = "latin1"))
+fylker <- read_csv2("data/fylker_navn.csv", locale = locale(encoding = "latin1"))
 
 fylker_navn <- fylker %>%
   select(1,2) %>%
@@ -52,9 +54,8 @@ fylker_navn <- fylker %>%
 # Join to add fylkesnavn
 bef <- bef %>% 
   left_join(fylker_navn, by="fylke_id") %>%
-  select(6, 1:5)
-
-rm(fylker_navn)
+  select(6, 1:5) %>%
+  filter(population > 0)
 ```
 
 ## Befolkningsutvikling i norske fylker
@@ -62,8 +63,8 @@ rm(fylker_navn)
 ```{r}
 # Make categories of kommmune populations
 bef_kat <- bef %>% 
-  mutate(size_1990 = cut(population, breaks = c(0, 2500, 5000, 10000, 20000, 50000, 1000000), labels = c("2,5k", "5k", "10k", "20k", "50k", "50k+"))) %>%
-  filter(year == 1990) %>%
+  mutate(size_2000 = cut(population, breaks = c(0, 2500, 5000, 10000, 20000, 50000, 1000000), labels = c("2,5k", "5k", "10k", "20k", "50k", "50k+"))) %>%
+  filter(year == 2000) %>%
   na.omit() %>%
   select(3,7)
 
@@ -74,9 +75,26 @@ bef <-  bef %>%
 rm(bef_kat)
 ```
 
-```{r}
-# Make plots to show population change over time in fylker and types of kommuner
+## Data construct
+Got the data from SSB API. Includes population counts for each municipality in Norway from 1990 to 2016. Constructed the variable `size_1990` which is categorical size of the municipality in 1990.
 
+```{r}
+unique(bef$fylke_navn)
+bef %>% 
+  str_trim(fylke_navn, side="left") %>%
+  filter(fylke_navn == "Hedmark") %>%
+  group_by(kommune) %>%
+  summarise(n())
+  
+```
+
+
+
+## Make plots to show population change over time in fylker and types of kommuner
+I'm using the 1990 population mean for each category in `size_1990` as reference value. Plotting percentage change over time to see the trends for each category in the respective county.
+
+
+```{r}
 # 1/5 fylker fra sør
 bef %>%
   group_by(fylke_navn, fylke_id, size_1990, year) %>%
